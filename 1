@@ -1,0 +1,228 @@
+// 设定变量
+let morningTime = "07:18"; // 自己运动能量生成时间
+let startTime = "07:00";
+let endTime = "07:35";
+let screen_width = 1080;  // 设置屏幕的宽度，像素值
+let screen_height = 2340; // 设置屏幕的高度，像素值
+
+// 圈X脚本入口
+$task.start(async () => {
+    unlock();
+    await $utils.sleep(2000);
+
+    // 监听音量键，退出脚本
+    $event.observeKeys(keys => {
+        if (keys.includes('volume_down')) {
+            $utils.toast("您选择退出脚本！");
+            $utils.sleep(2000);
+            $task.stop();
+        }
+    });
+
+    await mainEntrence();
+    get_alipay_points();
+    $task.stop();
+});
+
+// 程序主入口
+async function mainEntrence() {
+    // 前置操作
+    await prepareThings();
+    do {
+        // 打开支付宝
+        await openAlipay();
+        // 蚂蚁庄园
+        if (!checkTime()) {
+            // await enterAntFarm();
+        }
+        // 进入蚂蚁森林主页, 收集自己的能量
+        await enterMyMainPage();
+        // 进入排行榜
+        if (await enterRank()) {
+            // 进入好友主页，收好友能量
+            await enterOthers();
+        }
+        // 结束后返回主页面
+        await whenComplete();
+    } while (checkTime());
+}
+
+// 蚂蚁会员积分
+async function get_alipay_points() {
+    await clickByTextDesc("我的", 0);
+    await $utils.sleep(2000);
+    await clickByTextDesc("支付宝会员", 0);
+    await $utils.sleep(8000);
+    await clickByTextDesc("领积分", 0);
+    await $utils.sleep(2000);
+
+    for (let i = 0; i < 10; i++) {
+        await clickByTextDesc("点击领取", 0);
+        await $utils.sleep(100);
+    }
+    await $ui.back();
+    await $utils.sleep(1000);
+    await $ui.back();
+    await $utils.sleep(1000);
+    await clickByTextDesc("首页", 0);
+}
+
+// 解锁
+async function unlock() {
+    if (!$device.isScreenOn()) {
+        // 点亮屏幕
+        $device.wakeUp();
+        await $utils.sleep(1000);
+        $gesture.swipe(500, 0, 500, 1900, 2000);
+        await $gesture.click(100, 150);
+        await $utils.sleep(2000);
+        await $gesture.click(540, 1800);
+        await $utils.sleep(500);
+        await $gesture.click(540, 1800);
+        await $utils.sleep(500);
+        await $gesture.click(240, 1620);
+        await $utils.sleep(500);
+        await $gesture.click(540, 1620);
+        await $utils.sleep(500);
+    }
+}
+
+// 获取权限和设置参数
+async function prepareThings() {
+    $device.setScreenMetrics(screen_width, screen_height);
+    if (!await $media.requestScreenCapture()) {
+        $utils.toast("请求截图失败, 脚本退出");
+        $task.stop();
+    }
+    await $utils.sleep(3000);
+}
+
+// 获取截图
+async function getCaptureImg() {
+    let img0 = await $media.captureScreen();
+    await $utils.sleep(100);
+    if (!img0) {
+        $utils.toast("截图失败, 脚本退出");
+        $task.stop();
+    }
+    return img0;
+}
+
+// 从支付宝主页进入蚂蚁森林我的主页
+async function enterMyMainPage() {
+    let i = 0;
+    $gesture.swipe(screen_width * 0.5, screen_height * 0.5, screen_width * 0.5, screen_height * 0.25, 500);
+    await $utils.sleep(500);
+    $gesture.swipe(screen_width * 0.5, screen_height * 0.25, screen_width * 0.5, screen_height * 0.5, 500);
+    while (!await $ui.textEndsWith("蚂蚁森林") && !await $ui.descEndsWith("蚂蚁森林") && i <= 5) {
+        await $utils.sleep(1000);
+        i++;
+    }
+    if (i >= 5) {
+        $utils.toast("没有找到蚂蚁森林入口，尝试中");
+        await clickByTextDesc("首页", 0);
+        await $utils.sleep(2000);
+        $gesture.swipe(screen_width * 0.5, screen_height * 0.3, screen_width * 0.5, screen_height * 0.7, 1000);
+        await $utils.sleep(2000);
+        $gesture.swipe(screen_width * 0.5, screen_height * 0.3, screen_width * 0.5, screen_height * 0.7, 1000);
+        await $utils.sleep(2000);
+    }
+    await clickByTextDesc("蚂蚁森林", 0);
+
+    await $utils.sleep(3000);
+    i = 0;
+    while (!await $ui.textEndsWith("种树") && !await $ui.descEndsWith("种树") && i <= 10) {
+        await $utils.sleep(1000);
+        i++;
+    }
+    $utils.toast("第" + i + "次尝试进入自己主页");
+    if (i >= 10) {
+        $utils.toast("进入自己能量主页失败");
+        return false;
+    }
+
+    for (let row = screen_height * 0.256; row < screen_height * 0.376; row += 80) {
+        for (let col = screen_width * 0.185; col < screen_width * 0.815; col += 80) {
+            await $gesture.click(col, row);
+        }
+    }
+    $utils.toast("自己能量收集完成");
+    await $utils.sleep(100);
+    return true;
+}
+
+// 进入排行榜
+async function enterRank() {
+    $utils.toast("进入排行榜");
+    await $utils.sleep(2000);
+    $gesture.swipe(screen_width * 0.5, screen_height * 0.8, screen_width * 0.5, screen_height * 0.1, 500);
+    await $utils.sleep(500);
+    $gesture.swipe(screen_width * 0.5, screen_height * 0.8, screen_width * 0.5, screen_height * 0.1, 500);
+    $utils.toast("查看更多好友");
+    await $utils.sleep(500);
+    await clickByTextDesc("查看更多好友", 0);
+    await $utils.sleep(3000);
+    return true;
+}
+
+// 从排行榜获取可收集好友的点击位置
+async function getHasEnergyfriend(type) {
+    let img = await getCaptureImg();
+    let p = null;
+    if (type == 1) {
+        p = $image.findMultiColors(img, "#ffffff", [[0, -35, "#1da06d"], [0, 23, "#1da06d"]], {
+            region: [1043, 200, 1, screen_height - 300]
+        });
+    }
+    if (p) {
+        $utils.toast("找到好友");
+        return p;
+    } else {
+        return null;
+    }
+}
+
+// 在排行榜页面, 循环查找可收集好友
+async function enterOthers() {
+    await $utils.sleep(1000);
+    let i = 1;
+    let ePoint = await getHasEnergyfriend(1);
+
+    while (!ePoint) {
+        if (myEnergyTime()) {
+            return false;
+        }
+        $gesture.swipe(screen_width * 0.5, screen_height * 0.7, screen_width * 0.5, screen_height * 0.1, 500);
+        await $utils.sleep(1000);
+        ePoint = await getHasEnergyfriend(1);
+        i++;
+        if (i > 15) {
+            $utils.toast("程序可能出错, 连续" + i + "次未检测到可收集好友");
+            return false;
+        }
+    }
+
+    await $gesture.click(ePoint.x, ePoint.y + 20);
+    await $utils.sleep(3000);
+    i = 0;
+    while (!await $ui.textEndsWith("你收取TA") && !await $ui.descEndsWith("你收取TA") && i <= 10) {
+        await $utils.sleep(1000);
+        i++;
+    }
+    $utils.toast("第" + i + "次尝试进入好友主页");
+    if (i >= 10) {
+        $utils.toast("进入好友能量主页失败");
+        return false;
+    }
+
+    for (let row = screen_height * 0.256; row < screen_height * 0.376; row += 80) {
+        for (let col = screen_width * 0.185; col < screen_width * 0.815; col += 80) {
+            await $gesture.click(col, row);
+        }
+    }
+
+    await $ui.back();
+    await enterOthers();
+}
+
+async function clickByTextDesc(energyType
